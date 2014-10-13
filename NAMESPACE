@@ -1,0 +1,8 @@
+useDynLib(flam)
+export(flam, flamDOF, flamCV, sim.data)
+S3method(plot, flam)
+S3method(plot, flamCV)
+S3method(plot, flamSparsity)
+S3method(predict, flam)
+S3method(summary, flam)
+S3method(summary, flamCV)
