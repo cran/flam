@@ -1,4 +1,5 @@
 useDynLib(flam)
+importFrom(Rcpp, evalCpp)
 export(flam, flamDOF, flamCV, sim.data)
 S3method(plot, flam)
 S3method(plot, flamCV)

@@ -9,7 +9,7 @@ Fit an additive model where each component is estimated to piecewise constant wi
 }
 \usage{
 flam(x, y, lambda.min.ratio = 0.01, n.lambda = 50, lambda.seq = NULL,
-alpha.seq = 1, family = "gaussian", method = "BCD")
+alpha.seq = 1, family = "gaussian", method = "BCD", tolerance = 10e-6)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -37,6 +37,9 @@ specifies the loss function to use. Currently supports squared error loss (defau
   \item{method}{
 specifies the optimization algorithm to use. Options are block-coordinate descent (default; \code{method="BCD"}), generalized gradient descent (\code{method="GGD"}), or generalized gradient descent with backtracking (\code{method="GGD.backtrack"}). This argument is ignored if \code{family="binomial"}.
 }
+  \item{tolerance}{
+specifies the convergence criterion for the objective (default is 10e-6).
+}
 }
 
 \value{
@@ -53,6 +56,7 @@ An object with S3 class "flam".
 \item{x}{as specified by user.}
 \item{family}{as specified by user (or default).}
 \item{method}{as specified by user (or default).}
+\item{tolerance}{as specified by user (or default).}
 \item{call}{the matched call.}
 }
 \references{

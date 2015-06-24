@@ -10,7 +10,7 @@ Fit an additive model where each component is estimated to piecewise constant wi
 \usage{
 flamCV(x, y, lambda.min.ratio = 0.01, n.lambda = 50, lambda.seq = NULL,
 alpha = 1, family = "gaussian", method = "BCD", fold = NULL,
-n.fold = NULL, seed = NULL, within1SE = T)
+n.fold = NULL, seed = NULL, within1SE = T, tolerance = 10e-6)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -50,6 +50,9 @@ an optional number used with \code{set.seed()} at the beginning of the function.
   \item{within1SE}{
 logical (\code{TRUE} or \code{FALSE}) for how cross-validated tuning parameters should be chosen. If \code{within1SE=TRUE}, lambda is chosen to be the value corresponding to the most sparse model with cross-validation error within one standard error of the minimum cross-validation error. If \code{within1SE=FALSE}, lambda is chosen to be the value corresponding to the minimum cross-validation error.
 }
+  \item{tolerance}{
+specifies the convergence criterion for the objective (default is 10e-6).
+}
 }
 \details{
 Note that \code{flamCV} does not cross-validate over \code{alpha} - just a single value should be provided. However, if the user would like to cross-validate over \code{alpha}, then \code{flamCV} should be called multiple times for different values of \code{alpha} and the same \code{seed}. This ensures that the cross-validation folds (\code{fold}) remain the same for the different values of \code{alpha}. See the example below for details.
@@ -65,6 +68,7 @@ An object with S3 class "flamCV".
 \item{fold}{as specified by user (or default).}
 \item{n.folds}{as specified by user (or default).}
 \item{within1SE}{as specified by user (or default).}
+\item{tolerance}{as specified by user (or default).}
 \item{call}{matched call.}
 }
 \references{

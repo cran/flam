@@ -1,5 +1,5 @@
 #functions to include in FLAM R package
-#updated 10/8/14
+#updated 6/16/14
 
 #########################################################################################################
 ### FUNCTIONS FOR DATA MANAGEMENT
@@ -28,7 +28,9 @@ makePermList = function(x) {
 f.to.theta = function(f.mat, x, rank.x=NULL) {
 	
 	theta.mat = f.mat
-	if (is.null(rank.x)) for (j in 1:ncol(f.mat)) theta.mat[,j] = f.mat[rank(x[,j]),j] else {
+	if (is.null(rank.x)) {
+    for (j in 1:ncol(f.mat)) theta.mat[,j] = f.mat[rank(x[,j]),j]
+    } else {
 		theta.mat  = sapply(1:ncol(f.mat),function(index,rank.x,f.mat) f.mat[rank.x[,index],index], rank.x=rank.x, f.mat=f.mat)
 	}
 	
@@ -62,8 +64,9 @@ theta.to.f = function(theta.mat, x, order.x=NULL) {
 #family ("gaussian" for squared error loss and "binomial" for logistic loss)
 #and method for "BCD"=block coordinate descent, "GGD"=generalized gradient descent, "GGD.backtrack"=GGD with backtracking (varying step size)
 #method argument is currently ignored for family="binomial"
+#tolerance is the convergence criterion for the objective
 
-flam = function(x, y, lambda.min.ratio = 0.01, n.lambda = 50, lambda.seq=NULL, alpha.seq=1, family="gaussian", method="BCD") {	
+flam = function(x, y, lambda.min.ratio = 0.01, n.lambda = 50, lambda.seq = NULL, alpha.seq = 1, family = "gaussian", method = "BCD", tolerance = 10e-6) {	
 	
 	call = match.call()
 	fit = list()
@@ -106,34 +109,32 @@ flam = function(x, y, lambda.min.ratio = 0.01, n.lambda = 50, lambda.seq=NULL, a
 		if (l==1) initial.f.mat=NULL else if ((l %% length(lambda.seq))==1) initial.f.mat=fit$f.hat.list[[l-length(lambda.seq)]] else initial.f.mat=fit$f.hat.list[[l-1]]
 		
 		if (family=="gaussian" & method=="BCD") {		
-			one.fit = flam.helper(y=y, lambda=fit$all.lambda[l], alpha=fit$all.alpha[l], x=x, initial.f.mat=initial.f.mat, n=n, p=p, order.x=order.x, rank.x=rank.x)
+			one.fit = flam.helper(y=y, lambda=fit$all.lambda[l], alpha=fit$all.alpha[l], x=x, initial.f.mat=initial.f.mat, n=n, p=p, order.x=order.x, rank.x=rank.x, tolerance=tolerance)			
 		}
 		
 		if (family=="gaussian" & method=="GGD") {
-			one.fit = flam.ggd.helper(y=y, lambda=fit$all.lambda[l], alpha=fit$all.alpha[l], x=x, rank.x=rank.x, order.x=order.x, n=n, p=p, initial.f.mat=initial.f.mat)
+			one.fit = flam.ggd.helper(y=y, lambda=fit$all.lambda[l], alpha=fit$all.alpha[l], x=x, rank.x=rank.x, order.x=order.x, n=n, p=p, initial.f.mat=initial.f.mat, tolerance=tolerance)
 		}
 		
 		if (family=="gaussian" & method=="GGD.backtrack") {
 			if (l==1) initial.L=1 else if ((l %% length(lambda.seq))==1) initial.L=L.vec[l-length(lambda.seq)] else initial.L=L.vec[l-1]
-			one.fit = flam.ggd.helper_backtrack(y=y, lambda=fit$all.lambda[l], alpha=fit$all.alpha[l], x=x, n=n, p=p, initial.L=initial.L, rank.x=rank.x, order.x=order.x, initial.f.mat=initial.f.mat)
+			one.fit = flam.ggd.helper_backtrack(y=y, lambda=fit$all.lambda[l], alpha=fit$all.alpha[l], x=x, n=n, p=p, initial.L=initial.L, rank.x=rank.x, order.x=order.x, initial.f.mat=initial.f.mat, tolerance=tolerance)
 		}
 		
-		if (family=="binomial") one.fit = flam.logistic.helper(y=y, lambda=fit$all.lambda[l], alpha=fit$all.alpha[l], x=x, n=n, p=p, rank.x=rank.x, order.x=order.x, initial.f.mat=initial.f.mat)
+		if (family=="binomial") one.fit = flam.logistic.helper(y=y, lambda=fit$all.lambda[l], alpha=fit$all.alpha[l], x=x, n=n, p=p, rank.x=rank.x, order.x=order.x, initial.f.mat=initial.f.mat, tolerance=tolerance)
 		
 		fit$f.hat.list[[l]] = one.fit$f.hat.mat
-		fit$theta.hat.list[[l]] = f.to.theta(one.fit$f.hat.mat,x)
+		fit$theta.hat.list[[l]] = one.fit$theta.hat.mat
 		fit$beta0.hat.vec[l] = one.fit$beta0.hat
 		fit$y.hat.mat[l,] = one.fit$y.hat
-		n.iter.vec[l] = one.fit$n.iter
-		obj.list[[l]] = one.fit$objective
 		if (method=="GGD.backtrack") L.vec[l] = one.fit$L
-
+  
 	}	
 
 	fit$non.sparse.list = sapply(fit$theta.hat.list, function(theta.hat.mat) which(apply(theta.hat.mat, 2, function(col) sum(col^2))!=0))
 	fit$num.non.sparse = sapply(fit$theta.hat.list, function(theta.hat.mat) sum(apply(theta.hat.mat, 2, function(col) sum(col^2)!=0)))
 
-	fit$y = y; fit$x = x; fit$family = family; fit$method = method; fit$call = call
+	fit$y = y; fit$x = x; fit$family = family; fit$method = method; fit$call = call; fit$tolerance = tolerance
 	class(fit) = "flam"
 	return(fit)
 }
@@ -145,75 +146,26 @@ flam = function(x, y, lambda.min.ratio = 0.01, n.lambda = 50, lambda.seq=NULL, a
 # squared error loss, block coordinate descent
 #########################################################################################################
 
-flam.helper = function(y,lambda,alpha,x,initial.theta.mat=NULL,initial.f.mat=NULL,n,p,order.x,rank.x) {
-		
-	#intialize matrix for storing theta hat estimates
-	if (!is.null(initial.theta.mat)) {
-		theta.mat = initial.theta.mat
-		} else if (!is.null(initial.f.mat)) {
-			theta.mat = f.to.theta(initial.f.mat, x, rank.x)
-		} else {
-			theta.mat = matrix(0, nrow=n, ncol=p)
-		}
+flam.helper = function(y,lambda,alpha,x,initial.theta.mat=NULL,initial.f.mat=NULL,n,p,order.x,rank.x,tolerance) {
+  
+  #intialize matrix for storing theta hat estimates
+  if (!is.null(initial.f.mat)) {
+    initial.theta.mat = f.to.theta(initial.f.mat, x, rank.x)
+  } else if (is.null(initial.theta.mat)) {
+    initial.theta.mat = matrix(0, nrow=n, ncol=p)
+  }
+  beta0 = 0
+  theta.mat = flamstep(initial.theta.mat,y,lambda,alpha,n,p,order.x,rank.x,beta0,tolerance)
+  f.hat.mat = theta.to.f(theta.mat, x, order.x)
 
-	#vector to store values of objective so convergence can be checked
-	obj.vec = c()
-	
-	#number of iterations counter
-	n.iter = 0
-
-	converge = FALSE
-	
-	while (converge==FALSE & n.iter<1000) {
-		
-		n.iter = n.iter + 1
-		
-		for (j in 1:p) {
-			beta0 = 0
-			if (p>2) r = y - rowSums(theta.mat[,-j]) else if (p==2) r = y - theta.mat[,-j] else r = y
-			r = r[order.x[,j]]
-
-			sol =.C("tf_dp_R", n = as.integer(n), r = as.double(r), lam1 = as.double(alpha*lambda), beta = as.double(rep(0,n)))
-			est = sol$beta[rank.x[,j]]
-			
-			center = sum(est)/n
-			beta0 = beta0 + center
-			est.nothreshold = est - center
-			if (sum(est.nothreshold^2)!=0) {
-				theta.mat[,j] = max(0, 1-((1-alpha)*lambda/sqrt(sum(est.nothreshold^2)))) * est.nothreshold
-			} else {
-				theta.mat[,j] = est.nothreshold
-			}
-		}	
-		
-		#store value of objective
-		theta.mat.reord = sapply(1:p, function(theta.mat, order.x, i) theta.mat[,i][order.x[,i]], theta.mat=theta.mat, order.x=order.x)
-		sum1 = 0
-		for (k in 2:n) sum1 = sum1 + sum(abs(theta.mat.reord[k,] - theta.mat.reord[k-1,]))
-
-		sum2 = sum(sqrt(colSums(theta.mat^2)))
-		
-		if (p>1) sq.err = sum((y - (beta0 + rowSums(theta.mat)))^2) else sq.err = sum((y - (beta0 + theta.mat))^2)
-		new.obj = 0.5 * sq.err + lambda * alpha * sum1 + lambda * (1-alpha) * sum2
-		obj.vec = c(obj.vec, new.obj)
-
-		#check for convergence
-		if (length(obj.vec)>1) {
-			dev = abs(obj.vec[length(obj.vec)] - obj.vec[length(obj.vec)-1]) / abs(obj.vec[length(obj.vec)-1])
-			if (dev < 10e-6) converge = TRUE
-		}
-	}
-	
-	f.hat.mat = theta.to.f(theta.mat, x, order.x)
-	
-	return(list(f.hat.mat=f.hat.mat,beta0.hat=beta0,y.hat=(beta0+rowSums(theta.mat)),objective=obj.vec,n.iter=n.iter,x=x, family="gaussian", method="BCD"))
+  return(list(f.hat.mat=f.hat.mat,theta.hat.mat=theta.mat,beta0.hat=beta0,y.hat=(beta0+rowSums(theta.mat)),x=x, family="gaussian", method="BCD"))
 }
 
 #########################################################################################################
 # squared error loss, generalized gradient descent
 #########################################################################################################
 
-flam.ggd.helper = function(y,lambda,alpha,x,initial.theta.mat=NULL,initial.f.mat=NULL,rank.x, order.x,n,p) {
+flam.ggd.helper = function(y,lambda,alpha,x,initial.theta.mat=NULL,initial.f.mat=NULL,rank.x, order.x,n,p,tolerance) {
 		
 	#intialize matrix for storing theta hat estimates
 	if (!is.null(initial.theta.mat)) {
@@ -261,32 +213,24 @@ flam.ggd.helper = function(y,lambda,alpha,x,initial.theta.mat=NULL,initial.f.mat
 		#check for convergence
 		if (length(obj.vec)>1) {
 			dev = abs(obj.vec[length(obj.vec)] - obj.vec[length(obj.vec)-1]) / abs(obj.vec[length(obj.vec)-1])
-			if (dev < 10e-6) converge = TRUE
-		}
-		
-		#check for convergence
-		#if (length(obj.vec)>1) {
-		#	dev = norm(theta.mat-theta.mat_old,type="F") / norm(theta.mat_old,type="F")
-		#	if (dev < 10e-20) converge = TRUE
-		#}
-		
+			if (dev < tolerance) converge = TRUE
+		}		
 		theta.mat_old = theta.mat
 	}
-
 	
 	#center theta_j's
 	theta.mat = scale(theta.mat, center=T, scale=F)
 	
 	f.hat.mat = theta.to.f(theta.mat, x, order.x)
 	
-	return(list(f.hat.mat=f.hat.mat,beta0.hat=beta0,y.hat=(beta0+rowSums(theta.mat)),objective=obj.vec,n.iter=n.iter,x=x, family="gaussian", method="GGD"))
+	return(list(f.hat.mat=f.hat.mat,theta.hat.mat=theta.mat,beta0.hat=beta0,y.hat=(beta0+rowSums(theta.mat)),objective=obj.vec,n.iter=n.iter,x=x, family="gaussian", method="GGD"))
 }
 
 #########################################################################################################
 # squared error loss, generalized gradient descent with backtracking
 #########################################################################################################
 
-flam.ggd.helper_backtrack = function(y,lambda,alpha,x,initial.L,initial.theta.mat=NULL,initial.f.mat=NULL,n,p, rank.x, order.x) {
+flam.ggd.helper_backtrack = function(y,lambda,alpha,x,initial.L,initial.theta.mat=NULL,initial.f.mat=NULL,n,p, rank.x, order.x, tolerance) {
 		
 	#intialize matrix for storing theta hat estimates
 	if (!is.null(initial.theta.mat)) {
@@ -345,7 +289,7 @@ flam.ggd.helper_backtrack = function(y,lambda,alpha,x,initial.L,initial.theta.ma
 			#check for convergence
 			if (length(obj.vec)>1) {
 				dev = abs(obj.vec[length(obj.vec)] - obj.vec[length(obj.vec)-1]) / abs(obj.vec[length(obj.vec)-1])
-				if (dev < 10e-6) converge = TRUE
+				if (dev < tolerance) converge = TRUE
 			}
 		
 			theta.mat_old = theta.mat
@@ -363,66 +307,24 @@ flam.ggd.helper_backtrack = function(y,lambda,alpha,x,initial.L,initial.theta.ma
 	f.hat.mat = theta.to.f(theta.mat, x)
 	firstL = (L.seq[which(maximizer==1)])[1]
 	
-	return(list(f.hat.mat=f.hat.mat,beta0.hat=beta0,y.hat=(beta0+rowSums(theta.mat)),objective=obj.vec,n.iter=n.iter,n.steps=sum(maximizer),x=x,L=firstL, family="gaussian", method="GGD.backtrack"))
+	return(list(f.hat.mat=f.hat.mat,theta.hat.mat=theta.mat,beta0.hat=beta0,y.hat=(beta0+rowSums(theta.mat)),objective=obj.vec,n.iter=n.iter,n.steps=sum(maximizer),x=x,L=firstL, family="gaussian", method="GGD.backtrack"))
 }
 
 #########################################################################################################
 # logistic loss, generalized gradient descent
 #########################################################################################################
 
-flam.logistic.helper = function(y,lambda,alpha,x,initial.theta.mat=NULL,initial.f.mat=NULL,n,p, rank.x, order.x) {
+flam.logistic.helper = function(y,lambda,alpha,x,initial.theta.mat=NULL,initial.f.mat=NULL,n, p, rank.x, order.x, tolerance) {
 		
 	#intialize matrix for storing theta hat estimates
-	if (!is.null(initial.theta.mat)) {
-		theta.mat = initial.theta.mat
-		} else if (!is.null(initial.f.mat)) {
-			theta.mat = f.to.theta(initial.f.mat, x)
-		} else {
-			theta.mat = matrix(0, nrow=n, ncol=p)
-		}
-		
-	#matrix for storing theta hat estimates from previous iteration
-	theta.mat_old = theta.mat
-	beta0 = 0
-	
-	L = (p + 1)/4 #Lipschitz constant
-
-	#vector to store values of objective so convergence can be checked
-	obj.vec = c()
-	
-	#number of iterations counter
-	n.iter = 0
-
-	converge = FALSE
-	
-	while (converge==FALSE & n.iter<1000) {
-		
-		n.iter = n.iter + 1
-		
-		resid.mat = theta.mat_old + matrix((y - expit(beta0 + rowSums(theta.mat_old)))/L,ncol=1) %*% matrix(1, nrow=1, ncol=p)	
-		theta.mat = sapply(1:p, fit.est, resid.mat=resid.mat, tuning.parameter=alpha*lambda/L, rank.x=rank.x, order.x=order.x)
-		beta0 = beta0 + (matrix(1,nrow=1,ncol=n) %*% matrix((y - expit(beta0 + rowSums(theta.mat_old))),ncol=1))/(n*L)	
-
-		theta.mat = apply(theta.mat, 2, soft.scale.est, tuning.parameter=(1-alpha)*lambda/L)
-		
-		#store value of objective
-		theta.mat.reord = sapply(1:p, function(theta.mat, order.x, i) theta.mat[,i][order.x[,i]], theta.mat=theta.mat, order.x=order.x)
-		sum1 = 0
-		for (k in 2:n) sum1 = sum1 + sum(abs(theta.mat.reord[k,] - theta.mat.reord[k-1,]))
-		sum2 = sum(sqrt(colSums(theta.mat^2)))
-		
-		f = -t(y) %*% (beta0 + rowSums(theta.mat)) + matrix(1, nrow=1, ncol=n) %*% log(1 + exp(beta0 + rowSums(theta.mat)))
-		new.obj = f + lambda * alpha * sum1 + lambda * (1-alpha) * sum2
-		obj.vec = c(obj.vec, new.obj)
-
-		#check for convergence
-		if (length(obj.vec)>1) {
-			dev = abs(obj.vec[length(obj.vec)] - obj.vec[length(obj.vec)-1]) / abs(obj.vec[length(obj.vec)-1])
-			if (dev < 10e-6) converge = TRUE
-		}
-		
-		theta.mat_old = theta.mat
+	if (!is.null(initial.f.mat)) {
+	  initial.theta.mat = f.to.theta(initial.f.mat, x, rank.x)
+	} else if (is.null(initial.theta.mat)) {
+	  initial.theta.mat = matrix(0, nrow=n, ncol=p)
 	}
+  
+  beta0 = 0
+	theta.mat = flamsteplogistic(initial.theta.mat, y, lambda, alpha, n, p, order.x, rank.x, beta0, tolerance)
 	
 	#intercept
 	beta0 = beta0 + sum(colMeans(theta.mat))
@@ -430,7 +332,7 @@ flam.logistic.helper = function(y,lambda,alpha,x,initial.theta.mat=NULL,initial.
 	
 	f.hat.mat = theta.to.f(theta.mat, x)
 	
-	return(list(f.hat.mat=f.hat.mat,beta0.hat=beta0,y.hat=expit(beta0+rowSums(theta.mat)),objective=obj.vec,n.iter=n.iter,x=x, family="binomial", method="GGD"))
+	return(list(f.hat.mat=f.hat.mat,theta.hat.mat=theta.mat,beta0.hat=beta0,y.hat=expit(beta0+rowSums(theta.mat)),x=x, family="binomial", method="GGD"))
 }
 
 #########################################################################################################
@@ -452,8 +354,8 @@ fit.est = function(col, resid.mat, rank.x, order.x, tuning.parameter) {
 	
 	resid.vec = resid.mat[,col][order.x[,col]]
 	
-	sol =.C("tf_dp_R", n = as.integer(length(resid.vec)), r = as.double(resid.vec), lam1 = as.double(tuning.parameter), beta = as.double(rep(0,length(resid.vec))))
-	est = sol$beta[rank.x[,col]]
+  betasol = tf_dp(n=length(resid.vec), y=resid.vec, lam=tuning.parameter)
+  est = betasol[rank.x[,col]]
 	return(est)
 }
 
@@ -467,7 +369,7 @@ expit=function(x) {exp(x)/(1+exp(x))}
 # based on fit of model returned by flam function (object)
 #########################################################################################################
 
-predict.flam.helper = function(x, new.x, fhat) {
+helper.predict.flam = function(x, new.x, fhat) {
 	
 	x.sort = sort(x)
 	if (!is.na(match(new.x, x.sort))) {
@@ -534,21 +436,21 @@ predict.flam = function(object, new.x, lambda, alpha, ...) {
 		
 		#fit model
 		if (object$family=="gaussian" & object$method=="BCD") {		
-			fit = flam.helper(y=object$y, lambda=lambda, alpha=alpha, x=object$x, initial.f.mat=initial.f.mat, n=n, p=p, order.x=order.x, rank.x=rank.x)
+			fit = flam.helper(y=object$y, lambda=lambda, alpha=alpha, x=object$x, initial.f.mat=initial.f.mat, n=n, p=p, order.x=order.x, rank.x=rank.x, tolerance=object$tolerance)
 		}
 		
 		if (object$family=="gaussian" & object$method=="GGD") {
-			fit = flam.ggd.helper(y=object$y, lambda=lambda, alpha=alpha, x=object$x, rank.x=rank.x, order.x=order.x, n=n, p=p, initial.f.mat=initial.f.mat)
+			fit = flam.ggd.helper(y=object$y, lambda=lambda, alpha=alpha, x=object$x, rank.x=rank.x, order.x=order.x, n=n, p=p, initial.f.mat=initial.f.mat, tolerance=object$tolerance)
 		}
 		
 		if (object$family=="gaussian" & object$method=="GGD.backtrack") {
-			fit = flam.ggd.helper_backtrack(y=object$y, lambda=lambda, alpha=alpha, x=object$x, n=n, p=p, initial.L=1, rank.x=rank.x, order.x=order.x, initial.f.mat=initial.f.mat)
+			fit = flam.ggd.helper_backtrack(y=object$y, lambda=lambda, alpha=alpha, x=object$x, n=n, p=p, initial.L=1, rank.x=rank.x, order.x=order.x, initial.f.mat=initial.f.mat, tolerance=object$tolerance)
 		}
 		
-		if (object$family=="binomial") fit = flam.logistic.helper(y=object$y, lambda=lambda, alpha=alpha, x=object$x, n=n, p=p, rank.x=rank.x, order.x=order.x, initial.f.mat=initial.f.mat)
+		if (object$family=="binomial") fit = flam.logistic.helper(y=object$y, lambda=lambda, alpha=alpha, x=object$x, n=n, p=p, rank.x=rank.x, order.x=order.x, initial.f.mat=initial.f.mat, tolerance=object$tolerance)
 
 		for (i in 1:new.n) {
-			theta.hat.mat[i,] = sapply(1:new.p, function(j) predict.flam.helper(x=fit$x[,j], fhat=fit$f.hat.mat[,j], new.x=new.x[i,j]))
+			theta.hat.mat[i,] = sapply(1:new.p, function(j) helper.predict.flam(x=fit$x[,j], fhat=fit$f.hat.mat[,j], new.x=new.x[i,j]))
 		}
 		
 		if (object$family=="gaussian") y.hat.new = fit$beta0.hat + rowSums(theta.hat.mat) else if (object$family=="binomial") y.hat.new = expit(fit$beta0.hat + rowSums(theta.hat.mat))
@@ -558,7 +460,7 @@ predict.flam = function(object, new.x, lambda, alpha, ...) {
 	#lambda in object$all.lambda and alpha in object$all.alpha
 			
 		for (i in 1:new.n) {
-			theta.hat.mat[i,] = sapply(1:new.p, function(j) predict.flam.helper(x=object$x[,j], fhat=object$f.hat.list[[index]][,j], new.x=new.x[i,j]))
+			theta.hat.mat[i,] = sapply(1:new.p, function(j) helper.predict.flam(x=object$x[,j], fhat=object$f.hat.list[[index]][,j], new.x=new.x[i,j]))
 		}
 		
 		if (object$family=="gaussian") y.hat.new = object$beta0.hat.vec[index] + rowSums(theta.hat.mat) else if (object$family=="binomial") y.hat.new = expit(object$beta0.hat.vec[index] + rowSums(theta.hat.mat))
@@ -572,9 +474,9 @@ predict.flam = function(object, new.x, lambda, alpha, ...) {
 # returns fit for value of cross-validated lambda and alpha
 #########################################################################################################
 
-flamCV.helper = function(lambda.seq,alpha.seq,y,x,train,method,family) {
+flamCV.helper = function(lambda.seq,alpha.seq,y,x,train,method,family,tolerance) {
 
-	fit = flam(y=y[train], lambda.seq=lambda.seq, alpha.seq=alpha.seq, x=x[train,], family=family, method=method)
+	fit = flam(y=y[train], lambda.seq=lambda.seq, alpha.seq=alpha.seq, x=x[train,], family=family, method=method, tolerance=tolerance)
 	
 	n.tuning = length(fit$all.lambda)
 	error.vec = rep(NA, n.tuning)
@@ -589,7 +491,7 @@ flamCV.helper = function(lambda.seq,alpha.seq,y,x,train,method,family) {
 	return(error.vec)
 }
 
-flamCV = function(x, y, lambda.min.ratio = 0.01, n.lambda = 50, lambda.seq=NULL, alpha=1, family="gaussian", method="BCD", fold=NULL, n.fold=NULL, seed=NULL, within1SE=T) {
+flamCV = function(x, y, lambda.min.ratio = 0.01, n.lambda = 50, lambda.seq=NULL, alpha=1, family="gaussian", method="BCD", fold=NULL, n.fold=NULL, seed=NULL, within1SE=T, tolerance=10e-6) {
 	
 	call = match.call()
 	fit = list()
@@ -626,7 +528,7 @@ flamCV = function(x, y, lambda.min.ratio = 0.01, n.lambda = 50, lambda.seq=NULL,
 
 	for (k in 1:n.fold) {
 		print(paste("fold: ",k,sep=""))
-		cv.error.mat[k,] = flamCV.helper(y=y, x=x, train=which(fold!=k), lambda.seq=lambda.seq, alpha.seq=alpha, method=method, family=family)
+		cv.error.mat[k,] = flamCV.helper(y=y, x=x, train=which(fold!=k), lambda.seq=lambda.seq, alpha.seq=alpha, method=method, family=family, tolerance=tolerance)
 	}
 	
 	fit$mean.cv.error = apply(cv.error.mat,2,function(col,n.vec,n) sum(col*n.vec)/n, n.vec=table(fold), n=length(fold))
@@ -885,14 +787,13 @@ flamDOF = function(object, index) {
 #########################################################################################################
 
 maxLambda_a1 = function(y, x) {
-	
-	permList = makePermList(x)
-	n = length(y)
-
-	max.lambda.vec = sapply(1:ncol(x), function(i, y, permList, n) max(abs(cumsum(permList[[i]] %*% (y - mean(y)))[1:(n-1)])), y=y, permList=permList, n=n)
-	
-	return(max(max.lambda.vec))
-	
+  
+  n = length(y)
+  
+  max.lambda.vec = sapply(1:ncol(x), function(i, y, x, n) maxLambda_a1_C_single(y - mean(y), x[,i], n), y=y, x=x, n=n)
+  
+  return(max(max.lambda.vec))
+  
 }
 
 #########################################################################################################
@@ -921,7 +822,8 @@ maxLambda = function(x, y, alpha) {
 	if (alpha<0 | alpha>1) stop("'alpha' must be in [0,1]")
 
 	max.lambda = min(maxLambda_a1(y,x)/alpha, maxLambda_a0(y)/(1-alpha))
-	return(max.lambda)
+	
+  return(max.lambda)
 }
 
 #########################################################################################################
@@ -950,17 +852,17 @@ gen.theta = function(X.mat, fcns, index) {
 	if (option==13) {theta_j = 3 + -6 * (x<(-1.7) | x>0.8); theta_j = theta_j/3.0000150}
 	if (option==14) {theta_j = -5 + 6 * (x>(-.7)) + 3 * (x>1.6); theta_j = (theta_j +.62)/3.4577044}
 
-	#scenario 2: 2 f_j from scenario 1 + 2 f_j from scenario 3 
-	if (option==21) {theta_j = 3 * (x<(-1)) + 2 + -7 * (x>0.5); theta_j = (theta_j - .1)/4.3232149}
-	if (option==22) {theta_j = 12 * (x<(-0.2)) + -5 + 7 * (x>1.1); theta_j = (theta_j - 2.48)/4.8999837}
-	if (option==23) {theta_j = x^3 + 1.5*(x-0.5)^2; theta_j = (theta_j - 3.500063)/4.8930086}
-	if (option==24) {theta_j = -pnorm(x, mean=0.5, sd=0.8); theta_j = (theta_j + .4003183)/0.3874514}
-
-	#scenario 3: smooth f_j - SPAM paper functions
-	if (option==31) {theta_j = -sin(1.5*x); theta_j = theta_j/0.6614151}
-	if (option==32) {theta_j = x^3 + 1.5*(x-0.5)^2; theta_j = (theta_j - 3.500063)/4.8930086}
-	if (option==33) {theta_j = -pnorm(x, mean=0.5, sd=0.8); theta_j = (theta_j + .4003183)/0.3874514}
-	if (option==34) {theta_j = sin(exp(-0.5*x)); theta_j = (theta_j - .6195458)/0.2985293}
+	#scenario 2: smooth f_j - SPAM paper functions
+	if (option==21) {theta_j = -sin(1.5*x); theta_j = theta_j/0.6614151}
+	if (option==22) {theta_j = x^3 + 1.5*(x-0.5)^2; theta_j = (theta_j - 3.500063)/4.8930086}
+	if (option==23) {theta_j = -pnorm(x, mean=0.5, sd=0.8); theta_j = (theta_j + .4003183)/0.3874514}
+	if (option==24) {theta_j = sin(exp(-0.5*x)); theta_j = (theta_j - .6195458)/0.2985293}
+	
+	#scenario 3: 2 f_j from scenario 1 + 2 f_j from scenario 2
+	if (option==31) {theta_j = 3 * (x<(-1)) + 2 + -7 * (x>0.5); theta_j = (theta_j - .1)/4.3232149}
+	if (option==32) {theta_j = 12 * (x<(-0.2)) + -5 + 7 * (x>1.1); theta_j = (theta_j - 2.48)/4.8999837}
+	if (option==33) {theta_j = x^3 + 1.5*(x-0.5)^2; theta_j = (theta_j - 3.500063)/4.8930086}
+	if (option==34) {theta_j = -pnorm(x, mean=0.5, sd=0.8); theta_j = (theta_j + .4003183)/0.3874514}
 	
 	#scenario 4: 'large n' with functions with large constant functions
 	if (option==41) {theta_j = -5 * (x<0) + (10*(x)^2 - 5) * (x>=0 & x<1) + (sin((x-1)*20) + 5) * (x>=1); theta_j = (theta_j + 1.324793)/4.562398}

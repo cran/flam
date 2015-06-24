@@ -1,14 +1,15 @@
 Package: flam
 Type: Package
 Title: Fits Piecewise Constant Models with Data-Adaptive Knots
-Version: 1.0
-Date: 2014-10-13
+Version: 2.0
+Date: 2015-06-24
 Author: Ashley Petersen
 Maintainer: Ashley Petersen <ajpete@uw.edu>
-Imports: MASS
 Description: Implements the fused lasso additive model as proposed in Petersen, A., Witten, D., and Simon, N. (2014). Fused Lasso Additive Model. arXiv preprint arXiv:1409.5391.
 License: GPL (>= 2)
-Packaged: 2014-10-13 17:51:08 UTC; ajpete
+Imports: Rcpp (>= 0.11.6), MASS
+LinkingTo: Rcpp
 NeedsCompilation: yes
+Packaged: 2015-06-24 17:50:15 UTC; ashleypetersen
 Repository: CRAN
-Date/Publication: 2014-10-13 21:53:48
+Date/Publication: 2015-06-25 07:11:00
