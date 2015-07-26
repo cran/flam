@@ -124,7 +124,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // flamstep
-NumericMatrix flamstep(NumericMatrix initialthetamat, NumericVector y, double lambda, double alpha, int n, int p, IntegerMatrix orderx, IntegerMatrix rankx, SEXP beta0_, long double tolerance);
+NumericMatrix flamstep(NumericMatrix initialthetamat, NumericVector y, double lambda, double alpha, int n, int p, IntegerMatrix orderx, IntegerMatrix rankx, SEXP beta0_, double tolerance);
 RcppExport SEXP flam_flamstep(SEXP initialthetamatSEXP, SEXP ySEXP, SEXP lambdaSEXP, SEXP alphaSEXP, SEXP nSEXP, SEXP pSEXP, SEXP orderxSEXP, SEXP rankxSEXP, SEXP beta0_SEXP, SEXP toleranceSEXP) {
 BEGIN_RCPP
     Rcpp::RObject __result;
@@ -138,13 +138,13 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< IntegerMatrix >::type orderx(orderxSEXP);
     Rcpp::traits::input_parameter< IntegerMatrix >::type rankx(rankxSEXP);
     Rcpp::traits::input_parameter< SEXP >::type beta0_(beta0_SEXP);
-    Rcpp::traits::input_parameter< long double >::type tolerance(toleranceSEXP);
+    Rcpp::traits::input_parameter< double >::type tolerance(toleranceSEXP);
     __result = Rcpp::wrap(flamstep(initialthetamat, y, lambda, alpha, n, p, orderx, rankx, beta0_, tolerance));
     return __result;
 END_RCPP
 }
 // flamsteplogistic
-NumericMatrix flamsteplogistic(NumericMatrix initialthetamat, NumericVector y, double lambda, double alpha, int n, int p, IntegerMatrix orderx, IntegerMatrix rankx, SEXP beta0_, long double tolerance);
+NumericMatrix flamsteplogistic(NumericMatrix initialthetamat, NumericVector y, double lambda, double alpha, int n, int p, IntegerMatrix orderx, IntegerMatrix rankx, SEXP beta0_, double tolerance);
 RcppExport SEXP flam_flamsteplogistic(SEXP initialthetamatSEXP, SEXP ySEXP, SEXP lambdaSEXP, SEXP alphaSEXP, SEXP nSEXP, SEXP pSEXP, SEXP orderxSEXP, SEXP rankxSEXP, SEXP beta0_SEXP, SEXP toleranceSEXP) {
 BEGIN_RCPP
     Rcpp::RObject __result;
@@ -158,7 +158,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< IntegerMatrix >::type orderx(orderxSEXP);
     Rcpp::traits::input_parameter< IntegerMatrix >::type rankx(rankxSEXP);
     Rcpp::traits::input_parameter< SEXP >::type beta0_(beta0_SEXP);
-    Rcpp::traits::input_parameter< long double >::type tolerance(toleranceSEXP);
+    Rcpp::traits::input_parameter< double >::type tolerance(toleranceSEXP);
     __result = Rcpp::wrap(flamsteplogistic(initialthetamat, y, lambda, alpha, n, p, orderx, rankx, beta0_, tolerance));
     return __result;
 END_RCPP

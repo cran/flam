@@ -14,8 +14,8 @@ The main functions are: (1) \code{\link{flam}} and (2) \code{\link{flamCV}}. The
 \tabular{ll}{
 Package: \tab flam\cr
 Type: \tab Package\cr
-Version: \tab 1.0\cr
-Date: \tab 2014-09-29\cr
+Version: \tab 3.0\cr
+Date: \tab 2015-07-26\cr
 License: \tab GPL (>= 2)\cr
 }
 The package includes the following functions:

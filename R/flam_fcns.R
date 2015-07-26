@@ -67,7 +67,7 @@ theta.to.f = function(theta.mat, x, order.x=NULL) {
 #tolerance is the convergence criterion for the objective
 
 flam = function(x, y, lambda.min.ratio = 0.01, n.lambda = 50, lambda.seq = NULL, alpha.seq = 1, family = "gaussian", method = "BCD", tolerance = 10e-6) {	
-	
+	version = 3
 	call = match.call()
 	fit = list()
 	
@@ -831,7 +831,7 @@ maxLambda = function(x, y, alpha) {
 #########################################################################################################
 
 #########################################################################################################
-### FUNCTION TO SIMULATE DATA  
+### FUNCTIONS TO SIMULATE DATA  
 #########################################################################################################
 
 gen.theta = function(X.mat, fcns, index) {

@@ -218,13 +218,13 @@ NumericMatrix orderthetamat(NumericMatrix thetamat, IntegerMatrix orderx, int n,
 
 
 // [[Rcpp::export]]
-NumericMatrix flamstep(NumericMatrix initialthetamat, NumericVector y, double lambda, double alpha, int n, int p, IntegerMatrix orderx, IntegerMatrix rankx, SEXP beta0_, long double tolerance) {
+NumericMatrix flamstep(NumericMatrix initialthetamat, NumericVector y, double lambda, double alpha, int n, int p, IntegerMatrix orderx, IntegerMatrix rankx, SEXP beta0_, double tolerance) {
    NumericMatrix thetamat = initialthetamat;
   double oldobj=0; double newobj=0; int niter=0; int converge=0; double dev=0; double sqerr=0; double sum1=0; double sum2=0; double err=0; double colnorm=0;
   NumericVector r (n); NumericVector betasol (n); double sumsqest=0;
   NumericVector est (n); NumericVector rr (n); NumericVector update (n);
   NumericVector beta0(beta0_);
-  long double sumest=0; 
+  double sumest=0; 
   
   while (converge==0 & niter<1000) {
     ++niter;
@@ -251,10 +251,10 @@ NumericMatrix flamstep(NumericMatrix initialthetamat, NumericVector y, double la
         est[k] -= sumest/n;
 			}
      for (int k=0; k<n; k++) {
-        sumsqest += pow(est[k],2);
+        sumsqest += pow(est[k],2.0);
       }
 			if (sumsqest!=0) {
-        long double scalef = 1 - (1 - alpha) * lambda/pow(sumsqest,0.5);
+        double scalef = 1 - (1 - alpha) * lambda/pow(sumsqest,0.5);
         
         if (scalef < 0) {
         for (int k=0; k<n; k++) {
@@ -278,7 +278,7 @@ NumericMatrix flamstep(NumericMatrix initialthetamat, NumericVector y, double la
       for (int l=0; l<p; l++) { 
        colnorm = 0;
    for (int k=0; k<n; k++) {
-          colnorm += pow(thetamat(k,l),2);
+          colnorm += pow(thetamat(k,l),2.0);
      }
      sum2 += pow(colnorm,0.5);
     }
@@ -289,7 +289,7 @@ NumericMatrix flamstep(NumericMatrix initialthetamat, NumericVector y, double la
      for (int l=0; l<p; l++) {
           err -= thetamat(k,l);
      }
-     sqerr += pow(err,2);
+     sqerr += pow(err,2.0);
     }
  		oldobj = newobj;
     newobj = 0.5 * sqerr + lambda * alpha * sum1 + lambda * (1-alpha) * sum2;
@@ -304,17 +304,17 @@ NumericMatrix flamstep(NumericMatrix initialthetamat, NumericVector y, double la
 }
 
 // [[Rcpp::export]]
-NumericMatrix flamsteplogistic(NumericMatrix initialthetamat, NumericVector y, double lambda, double alpha, int n, int p, IntegerMatrix orderx, IntegerMatrix rankx, SEXP beta0_, long double tolerance) {
+NumericMatrix flamsteplogistic(NumericMatrix initialthetamat, NumericVector y, double lambda, double alpha, int n, int p, IntegerMatrix orderx, IntegerMatrix rankx, SEXP beta0_, double tolerance) {
 
   NumericMatrix thetamat = initialthetamat;
-  long double oldobj=0; long double newobj=0; int niter=0; int converge=0; long double dev=0; 
-  long double sum1=0; long double sum2=0; long double colnorm=0;
-  NumericVector r (n); NumericVector betasol (n); long double sumsqest=0;
+  double oldobj=0; double newobj=0; int niter=0; int converge=0; double dev=0; 
+  double sum1=0; double sum2=0; double colnorm=0;
+  NumericVector r (n); NumericVector betasol (n); double sumsqest=0;
   NumericVector rr (n); NumericVector update (n);
   NumericVector beta0(beta0_); beta0[0] = 0; NumericVector yhat (n);
-  long double ftot=0;
+  double ftot=0;
   
-  long double L = (p + 1)/4;
+  double L = (p + 1)/4;
     for (int k=0; k<n; k++) {
     yhat[k] = beta0[0];
     for (int l=0; l<p; l++) {
@@ -348,10 +348,10 @@ NumericMatrix flamsteplogistic(NumericMatrix initialthetamat, NumericVector y, d
    for (int j=1; j<p+1; j++) {
      sumsqest = 0;
        for (int k=0; k<n; k++) {
-        sumsqest += pow(thetamat(k,j-1),2);
+        sumsqest += pow(thetamat(k,j-1),2.0);
       }
   		if (sumsqest!=0) {
-        long double scalef = 1 - (1 - alpha) * lambda/(L * pow(sumsqest,0.5));
+        double scalef = 1 - (1 - alpha) * lambda/(L * pow(sumsqest,0.5));
         
         if (scalef < 0) {
         for (int k=0; k<n; k++) {
@@ -371,7 +371,7 @@ NumericMatrix flamsteplogistic(NumericMatrix initialthetamat, NumericVector y, d
       for (int l=0; l<p; l++) { 
        colnorm = 0;
    for (int k=0; k<n; k++) {
-          colnorm += pow(thetamat(k,l),2);
+          colnorm += pow(thetamat(k,l),2.0);
      }
      sum2 += pow(colnorm,0.5);
     }

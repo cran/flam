@@ -44,8 +44,3 @@ flamstep <- function(initialthetamat, y, lambda, alpha, n, p, orderx, rankx, bet
 flamsteplogistic <- function(initialthetamat, y, lambda, alpha, n, p, orderx, rankx, beta0_, tolerance) {
     .Call('flam_flamsteplogistic', PACKAGE = 'flam', initialthetamat, y, lambda, alpha, n, p, orderx, rankx, beta0_, tolerance)
 }
-
-rcpp_hello_world <- function() {
-    .Call('flam_rcpp_hello_world', PACKAGE = 'flam')
-}
-
