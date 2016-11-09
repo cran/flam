@@ -154,8 +154,10 @@ flam.helper = function(y,lambda,alpha,x,initial.theta.mat=NULL,initial.f.mat=NUL
   } else if (is.null(initial.theta.mat)) {
     initial.theta.mat = matrix(0, nrow=n, ncol=p)
   }
-  beta0 = 0
-  theta.mat = flamstep(initial.theta.mat,y,lambda,alpha,n,p,order.x,rank.x,beta0,tolerance)
+  out = flamstep(initial.theta.mat,y,lambda,alpha,n,p,order.x,rank.x,tolerance)
+  theta.mat = out$thetamat
+  beta0 = out$beta0
+  
   f.hat.mat = theta.to.f(theta.mat, x, order.x)
 
   return(list(f.hat.mat=f.hat.mat,theta.hat.mat=theta.mat,beta0.hat=beta0,y.hat=(beta0+rowSums(theta.mat)),x=x, family="gaussian", method="BCD"))
@@ -323,8 +325,9 @@ flam.logistic.helper = function(y,lambda,alpha,x,initial.theta.mat=NULL,initial.
 	  initial.theta.mat = matrix(0, nrow=n, ncol=p)
 	}
   
-  beta0 = 0
-	theta.mat = flamsteplogistic(initial.theta.mat, y, lambda, alpha, n, p, order.x, rank.x, beta0, tolerance)
+	out = flamsteplogistic(initial.theta.mat, y, lambda, alpha, n, p, order.x, rank.x, tolerance)
+	theta.mat = out$thetamat
+	beta0 = out$beta0
 	
 	#intercept
 	beta0 = beta0 + sum(colMeans(theta.mat))

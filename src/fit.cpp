@@ -218,19 +218,18 @@ NumericMatrix orderthetamat(NumericMatrix thetamat, IntegerMatrix orderx, int n,
 
 
 // [[Rcpp::export]]
-NumericMatrix flamstep(NumericMatrix initialthetamat, NumericVector y, double lambda, double alpha, int n, int p, IntegerMatrix orderx, IntegerMatrix rankx, SEXP beta0_, double tolerance) {
+List flamstep(NumericMatrix initialthetamat, NumericVector y, double lambda, double alpha, int n, int p, IntegerMatrix orderx, IntegerMatrix rankx, double tolerance) {
    NumericMatrix thetamat = initialthetamat;
-  double oldobj=0; double newobj=0; int niter=0; int converge=0; double dev=0; double sqerr=0; double sum1=0; double sum2=0; double err=0; double colnorm=0;
+  double oldobj=0; double newobj=0; int niter=0; int converge=0; double dev=0; double sqerr=0; double sum1=0; double sum2=0; double err=0; double colnorm=0; double beta0=0;
   NumericVector r (n); NumericVector betasol (n); double sumsqest=0;
   NumericVector est (n); NumericVector rr (n); NumericVector update (n);
-  NumericVector beta0(beta0_);
   double sumest=0; 
   
   while (converge==0 & niter<1000) {
     ++niter;
     
     for (int j=1; j<p+1; j++) {
-    beta0[0] = 0;
+    beta0 = 0;
 			updateresidual(r, y, thetamat, j, n, p);
 			
     for (int k=0; k<n; k++) {
@@ -246,7 +245,7 @@ NumericMatrix flamstep(NumericMatrix initialthetamat, NumericVector y, double la
       for (int k=0; k<n; k++) {
         sumest += est[k];
       }
-			beta0[0] += sumest/n;
+			beta0 += sumest/n;
 			for (int k=0; k<n; k++) {
         est[k] -= sumest/n;
 			}
@@ -285,7 +284,7 @@ NumericMatrix flamstep(NumericMatrix initialthetamat, NumericVector y, double la
 		
     sqerr = 0;
      for (int k=0; k<n; k++) {
-       err = y[k] - beta0[0];
+       err = y[k] - beta0;
      for (int l=0; l<p; l++) {
           err -= thetamat(k,l);
      }
@@ -300,23 +299,26 @@ NumericMatrix flamstep(NumericMatrix initialthetamat, NumericVector y, double la
 		} 
 
   }
-   return(thetamat);
+   return List::create(
+     _["thetamat"] = thetamat,
+     _["beta0"] = beta0
+   );
 }
 
 // [[Rcpp::export]]
-NumericMatrix flamsteplogistic(NumericMatrix initialthetamat, NumericVector y, double lambda, double alpha, int n, int p, IntegerMatrix orderx, IntegerMatrix rankx, SEXP beta0_, double tolerance) {
+List flamsteplogistic(NumericMatrix initialthetamat, NumericVector y, double lambda, double alpha, int n, int p, IntegerMatrix orderx, IntegerMatrix rankx, double tolerance) {
 
   NumericMatrix thetamat = initialthetamat;
   double oldobj=0; double newobj=0; int niter=0; int converge=0; double dev=0; 
-  double sum1=0; double sum2=0; double colnorm=0;
+  double sum1=0; double sum2=0; double colnorm=0;  double beta0=0;
   NumericVector r (n); NumericVector betasol (n); double sumsqest=0;
   NumericVector rr (n); NumericVector update (n);
-  NumericVector beta0(beta0_); beta0[0] = 0; NumericVector yhat (n);
+  NumericVector yhat (n);
   double ftot=0;
   
   double L = (p + 1)/4;
     for (int k=0; k<n; k++) {
-    yhat[k] = beta0[0];
+    yhat[k] = beta0;
     for (int l=0; l<p; l++) {
       yhat[k] += thetamat(k,l);
     }
@@ -327,7 +329,7 @@ NumericMatrix flamsteplogistic(NumericMatrix initialthetamat, NumericVector y, d
     ++niter;
     
     for (int k=0; k<n; k++) {
-      beta0[0] += (y[k] - exp(yhat[k])/(1 + exp(yhat[k])))/(n * L);
+      beta0 += (y[k] - exp(yhat[k])/(1 + exp(yhat[k])))/(n * L);
     }
   
    for (int j=1; j<p+1; j++) {
@@ -378,7 +380,7 @@ NumericMatrix flamsteplogistic(NumericMatrix initialthetamat, NumericVector y, d
 
 
   for (int k=0; k<n; k++) {
-    yhat[k] = beta0[0];
+    yhat[k] = beta0;
     for (int l=0; l<p; l++) {
       yhat[k] += thetamat(k,l);
     }
@@ -397,6 +399,9 @@ NumericMatrix flamsteplogistic(NumericMatrix initialthetamat, NumericVector y, d
 		} 
 
   }
-   return(thetamat);
+  return List::create(
+    _["thetamat"] = thetamat,
+    _["beta0"] = beta0
+  );
 }
 

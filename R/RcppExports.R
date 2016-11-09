@@ -37,10 +37,11 @@ orderthetamat <- function(thetamat, orderx, n, p) {
     .Call('flam_orderthetamat', PACKAGE = 'flam', thetamat, orderx, n, p)
 }
 
-flamstep <- function(initialthetamat, y, lambda, alpha, n, p, orderx, rankx, beta0_, tolerance) {
-    .Call('flam_flamstep', PACKAGE = 'flam', initialthetamat, y, lambda, alpha, n, p, orderx, rankx, beta0_, tolerance)
+flamstep <- function(initialthetamat, y, lambda, alpha, n, p, orderx, rankx, tolerance) {
+    .Call('flam_flamstep', PACKAGE = 'flam', initialthetamat, y, lambda, alpha, n, p, orderx, rankx, tolerance)
 }
 
-flamsteplogistic <- function(initialthetamat, y, lambda, alpha, n, p, orderx, rankx, beta0_, tolerance) {
-    .Call('flam_flamsteplogistic', PACKAGE = 'flam', initialthetamat, y, lambda, alpha, n, p, orderx, rankx, beta0_, tolerance)
+flamsteplogistic <- function(initialthetamat, y, lambda, alpha, n, p, orderx, rankx, tolerance) {
+    .Call('flam_flamsteplogistic', PACKAGE = 'flam', initialthetamat, y, lambda, alpha, n, p, orderx, rankx, tolerance)
 }
+
