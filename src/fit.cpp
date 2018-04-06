@@ -225,7 +225,7 @@ List flamstep(NumericMatrix initialthetamat, NumericVector y, double lambda, dou
   NumericVector est (n); NumericVector rr (n); NumericVector update (n);
   double sumest=0; 
   
-  while (converge==0 & niter<1000) {
+  while (converge==0 && niter<1000) {
     ++niter;
     
     for (int j=1; j<p+1; j++) {
@@ -324,7 +324,7 @@ List flamsteplogistic(NumericMatrix initialthetamat, NumericVector y, double lam
     }
   }
   
-  while (converge==0 & niter<1000) {
+  while (converge==0 && niter<1000) {
 
     ++niter;
     
